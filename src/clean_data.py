@@ -15,12 +15,9 @@ OUT = "../data/cleaned/Cleaned_Dataset.xlsx"
 df = pd.read_excel(SRC)
 change_log = []
 
-# ---------- PHASE 1: Strategic handling of gaps ----------
+
 missing_coupon = df["CouponCode"].isna().sum()
-# CouponCode is missing because no coupon was applied at checkout, not
-# because data was lost at random. Filling with the mode (most frequent
-# real coupon) would falsely imply a discount was used. The correct fix is
-# an explicit category, not a statistical guess.
+
 df["CouponCode"] = df["CouponCode"].fillna("No Coupon")
 change_log.append({
     "Change ID": "CR001",
@@ -29,7 +26,7 @@ change_log.append({
     "Status": "Resolved",
 })
 
-# ---------- PHASE 2: Integrity audit (duplicates) ----------
+
 full_dupes = df.duplicated().sum()
 df = df.drop_duplicates()
 orderid_dupes = df["OrderID"].duplicated().sum()
@@ -41,12 +38,12 @@ change_log.append({
     "Status": "Resolved",
 })
 
-# ---------- PHASE 3: Standardize formats ----------
+
 text_cols = ["Product", "PaymentMethod", "OrderStatus", "ReferralSource",
              "ShippingAddress"]
 for col in text_cols:
     df[col] = df[col].astype(str).str.strip().str.title()
-# Codes/IDs: trim whitespace only, never re-case (would break SAVE10/ORD/TRK/C prefixes)
+
 for col in ["OrderID", "CustomerID", "TrackingNumber", "CouponCode"]:
     df[col] = df[col].astype(str).str.strip()
 change_log.append({
@@ -78,12 +75,12 @@ change_log.append({
 
 log_df = pd.DataFrame(change_log)
 
-# ---------- WRITE OUTPUT ----------
+
 with pd.ExcelWriter(OUT, engine="openpyxl") as writer:
     df.to_excel(writer, sheet_name="Cleaned_Data", index=False)
     log_df.to_excel(writer, sheet_name="Change_Log", index=False)
 
-# ---------- FORMATTING ----------
+
 wb = load_workbook(OUT)
 header_fill = PatternFill("solid", start_color="2F5233", end_color="2F5233")
 header_font = Font(name="Arial", bold=True, color="FFFFFF")
@@ -129,7 +126,7 @@ ws2.freeze_panes = "A2"
 
 wb.save(OUT)
 
-# ---------- VERIFICATION GATE ----------
+
 verify = pd.read_excel(OUT, sheet_name="Cleaned_Data")
 print("Rows:", len(verify))
 print("Duplicate OrderIDs:", verify["OrderID"].duplicated().sum())

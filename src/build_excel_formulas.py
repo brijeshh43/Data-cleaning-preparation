@@ -1,9 +1,4 @@
-"""
-Build a native-Excel cleaning workbook.
-Every cleaned value, audit flag, and change-log number is an Excel formula
-(TRIM/PROPER/ROUND/COUNTIF/ISNUMBER) referencing Raw_Data — nothing is
-pre-calculated in Python. Opening this in real Excel recalculates everything.
-"""
+
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -11,22 +6,22 @@ from openpyxl.utils import get_column_letter
 
 SRC = "../data/raw/raw_dataset.xlsx"
 OUT = "../excel/Cleaned_Dataset_Excel_Formulas.xlsx"
-N = 1200          # data rows
-LAST = N + 1      # last Excel row (header is row 1)
+N = 1200          
+LAST = N + 1      
 
 raw = pd.read_excel(SRC)
-cols = raw.columns.tolist()  # A..N order
+cols = raw.columns.tolist()  
 
 wb = Workbook()
 
-# ---------------- Raw_Data sheet (untouched source) ----------------
+
 ws_raw = wb.active
 ws_raw.title = "Raw_Data"
 ws_raw.append(cols)
 for r in raw.itertuples(index=False):
     ws_raw.append(list(r))
 
-# ---------------- Cleaned_Data sheet (all formulas) ----------------
+
 ws = wb.create_sheet("Cleaned_Data")
 headers = cols + ["Duplicate_OrderID_Check", "Duplicate_Tracking_Check",
                    "CouponCode_Was_Missing", "Date_Valid_Check"]
@@ -35,7 +30,7 @@ ws.append(headers)
 col_letter = {c: get_column_letter(i + 1) for i, c in enumerate(cols)}
 
 for row in range(2, LAST + 1):
-    R = lambda c: f"Raw_Data!{col_letter[c]}{row}"   # reference into Raw_Data
+    R = lambda c: f"Raw_Data!{col_letter[c]}{row}"   
     formulas = {
         "OrderID":         f"=TRIM({R('OrderID')})",
         "Date":            f"={R('Date')}",
@@ -67,7 +62,7 @@ for row in range(2, LAST + 1):
     ws.cell(row=row, column=o + 3,
             value=f'=IF(ISNUMBER(B{row}),"Valid","INVALID")')
 
-# ---------------- Verification_Gate sheet (formula-only) ----------------
+
 ws_v = wb.create_sheet("Verification_Gate")
 ws_v.append(["Check", "Result", "Pass Threshold"])
 ws_v.append(["Duplicate OrderID count",
@@ -80,7 +75,7 @@ ws_v.append(["Remaining blank CouponCode cells (post-fix)",
              f"=COUNTBLANK(Cleaned_Data!L2:L{LAST})", 0])
 ws_v.append(["VERDICT", '=IF(SUM(B2:B5)=0,"PASS - 0% Error Rate","FAIL - Review Required")', ""])
 
-# ---------------- Change_Log sheet (formula-driven impact numbers) ----------------
+
 ws_c = wb.create_sheet("Change_Log")
 ws_c.append(["Change ID", "Description", "Impact", "Status"])
 ws_c.append(["CR001", "Filled missing CouponCode values with explicit label 'No Coupon' (not mean/mode, since absence is meaningful, not random)",
@@ -94,7 +89,6 @@ ws_c.append(["CR004", "Applied ROUND(...,2) and a fixed 0.00 number format to Un
 ws_c.append(["CR005", "Validated Date column as true Excel date type and applied ISO 8601 (yyyy-mm-dd) display format",
              '="Invalid dates found: "&Verification_Gate!B4', "Resolved"])
 
-# ---------------- Formatting ----------------
 header_fill = PatternFill("solid", start_color="2F5233", end_color="2F5233")
 header_font = Font(name="Arial", bold=True, color="FFFFFF")
 body_font = Font(name="Arial")
